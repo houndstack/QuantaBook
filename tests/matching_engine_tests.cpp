@@ -126,3 +126,40 @@ TEST_CASE("zero quantity market orders are rejected") {
     REQUIRE_FALSE(r.accepted);
     REQUIRE(r.filled_quantity == 0);
 }
+
+TEST_CASE("reusing an order id after cancellation is rejected") {
+    MatchingEngine engine;
+    REQUIRE(engine.submit_limit_order(100, Side::Buy, 10000, 5).accepted);
+    REQUIRE(engine.cancel_order(100));
+
+    auto reused = engine.submit_limit_order(100, Side::Buy, 9999, 3);
+    REQUIRE_FALSE(reused.accepted);
+    REQUIRE(reused.unfilled_quantity == 3);
+    REQUIRE_FALSE(engine.best_bid().has_value());
+}
+
+TEST_CASE("reusing an order id after full fill is rejected") {
+    MatchingEngine engine;
+    REQUIRE(engine.submit_limit_order(1, Side::Sell, 10010, 2).accepted);
+    auto fill = engine.submit_limit_order(2, Side::Buy, 10010, 2);
+    REQUIRE(fill.accepted);
+    REQUIRE(fill.filled_quantity == 2);
+
+    auto reused = engine.submit_market_order(1, Side::Sell, 1);
+    REQUIRE_FALSE(reused.accepted);
+    REQUIRE(reused.unfilled_quantity == 1);
+}
+
+TEST_CASE("trade execution sequence is strictly increasing across submissions") {
+    MatchingEngine engine;
+    engine.submit_limit_order(1, Side::Sell, 10010, 2);
+    engine.submit_limit_order(2, Side::Sell, 10011, 2);
+
+    auto r1 = engine.submit_market_order(3, Side::Buy, 1);
+    auto r2 = engine.submit_market_order(4, Side::Buy, 2);
+
+    REQUIRE(r1.trades.size() == 1);
+    REQUIRE(r2.trades.size() == 2);
+    REQUIRE(r1.trades[0].execution_sequence < r2.trades[0].execution_sequence);
+    REQUIRE(r2.trades[0].execution_sequence < r2.trades[1].execution_sequence);
+}

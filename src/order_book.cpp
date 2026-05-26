@@ -76,10 +76,11 @@ SubmitResult OrderBook::submit_limit_order(const OrderId order_id,
                                            const SequenceNumber sequence,
                                            SequenceNumber& next_trade_sequence) {
     SubmitResult result{};
-    if (quantity == 0 || order_id_exists(order_id)) {
+    if (quantity == 0 || seen_order_ids_.contains(order_id) || order_id_exists(order_id)) {
         result.unfilled_quantity = quantity;
         return result;
     }
+    seen_order_ids_.insert(order_id);
 
     Order incoming{order_id, side, OrderType::Limit, limit_price, quantity, quantity, sequence};
     if (side == Side::Buy) {
@@ -109,10 +110,11 @@ SubmitResult OrderBook::submit_market_order(const OrderId order_id,
                                             const SequenceNumber sequence,
                                             SequenceNumber& next_trade_sequence) {
     SubmitResult result{};
-    if (quantity == 0 || order_id_exists(order_id)) {
+    if (quantity == 0 || seen_order_ids_.contains(order_id) || order_id_exists(order_id)) {
         result.unfilled_quantity = quantity;
         return result;
     }
+    seen_order_ids_.insert(order_id);
 
     Order incoming{order_id, side, OrderType::Market, std::nullopt, quantity, quantity, sequence};
     if (side == Side::Buy) {

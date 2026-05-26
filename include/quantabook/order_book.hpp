@@ -7,6 +7,7 @@
 #include <map>
 #include <optional>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 namespace quantabook {
@@ -52,6 +53,7 @@ class OrderBook {
     AskBook asks_;
     BidBook bids_;
     std::unordered_map<OrderId, OrderLocator> order_index_;
+    std::unordered_set<OrderId> seen_order_ids_;
 
     bool order_id_exists(OrderId order_id) const;
 
