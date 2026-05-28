@@ -1,5 +1,7 @@
 #include "quantabook/sim/simulator.hpp"
 #include "quantabook/sim/strategies/baseline_mm.hpp"
+#include "quantabook/sim/strategies/inventory_aware_mm.hpp"
+#include "quantabook/sim/strategies/random_taker.hpp"
 
 #include <catch2/catch_test_macros.hpp>
 
@@ -175,4 +177,54 @@ TEST_CASE("simple mark to market pnl arithmetic is correct") {
     REQUIRE(seller_last.mark_price == 100);
     REQUIRE(buyer_last.mtm_pnl == 0);
     REQUIRE(seller_last.mtm_pnl == 0);
+}
+
+TEST_CASE("random taker is deterministic under fixed seed") {
+    SimulationConfig cfg{};
+    cfg.seed = 555;
+    cfg.background.enabled = true;
+    cfg.end_time = 15;
+
+    Simulator a(cfg);
+    Simulator b(cfg);
+    a.add_agent(std::make_unique<RandomTaker>(2, RandomTakerConfig{1, 1, 99}, cfg.seed));
+    b.add_agent(std::make_unique<RandomTaker>(2, RandomTakerConfig{1, 1, 99}, cfg.seed));
+    a.run();
+    b.run();
+
+    REQUIRE(a.fill_log().size() == b.fill_log().size());
+    REQUIRE(a.event_log().size() == b.event_log().size());
+}
+
+TEST_CASE("inventory aware market maker skews quotes by inventory sign") {
+    SimulationConfig cfg{};
+    cfg.background.enabled = false;
+    cfg.expose_reference_value_to_agents = true;
+    cfg.initial_fair_value = 10000;
+    cfg.end_time = 4;
+
+    Simulator sim(cfg);
+    InventoryAwareMmConfig mm_cfg{};
+    mm_cfg.wakeup_interval = 1;
+    mm_cfg.base_quote_offset_ticks = 2;
+    mm_cfg.inventory_skew_per_unit_ticks = 1;
+    mm_cfg.quote_quantity = 1;
+    mm_cfg.max_inventory_abs = 10;
+
+    sim.add_agent(std::make_unique<InventoryAwareMm>(10, mm_cfg));
+    sim.add_agent(std::make_unique<ScriptedAgent>(
+        11, 10, std::vector<AgentAction>{SubmitMarketAction{1, Side::Sell, 1}}, std::vector<AgentAction>{}));
+    sim.run();
+
+    const auto& acct = sim.accounts().at(10);
+    REQUIRE(acct.inventory >= 0);
+
+    bool saw_shifted_bid = false;
+    for (const auto& row : sim.event_log()) {
+        if (row.event_type == "AddLimitOrderEvent" && row.agent_id == 10 && row.side == "Buy" && row.price < 9998) {
+            saw_shifted_bid = true;
+            break;
+        }
+    }
+    REQUIRE(saw_shifted_bid);
 }

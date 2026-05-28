@@ -10,12 +10,17 @@ add_library(quantabook
     src/matching_engine.cpp
     src/sim/simulator.cpp
     src/sim/baseline_mm.cpp
+    src/sim/random_taker.cpp
+    src/sim/inventory_aware_mm.cpp
 )
 
 target_include_directories(quantabook PUBLIC include)
 
 add_executable(quantabook_demo src/main.cpp)
 target_link_libraries(quantabook_demo PRIVATE quantabook)
+
+add_executable(sim_demo src/sim_demo.cpp)
+target_link_libraries(sim_demo PRIVATE quantabook)
 
 add_executable(benchmark_matching_engine benchmarks/benchmark_matching_engine.cpp)
 target_link_libraries(benchmark_matching_engine PRIVATE quantabook)

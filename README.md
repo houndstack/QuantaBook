@@ -18,6 +18,15 @@ Matching engines encode the mechanics behind price formation, queue priority, an
 - Deterministic trade generation
 - Unit tests as executable behavior specification
 
+## Current Simulator Scope (Phase 2 Foundation)
+- Deterministic event-driven simulation loop (`time`, then sequence)
+- Background liquidity and fair-value updates with seeded randomness
+- Agent interface with constrained observations
+- Baseline symmetric market maker
+- Random taker agent
+- Inventory-aware market maker
+- CSV export for event/fill/PnL logs
+
 ## Planned Future Stages
 - Event-driven exchange simulation with market regimes
 - Strategy agents (inventory-aware and volatility-aware market making)
@@ -39,6 +48,15 @@ ctest --test-dir build --output-on-failure
 ```bash
 ./build/quantabook_demo
 ```
+
+## Simulator CSV Demo
+```bash
+./build/sim_demo
+```
+This writes:
+- `output/sim_demo_seed_12345/simulation_event_log.csv`
+- `output/sim_demo_seed_12345/fills.csv`
+- `output/sim_demo_seed_12345/agent_pnl_timeseries.csv`
 
 ## Benchmark Scaffold
 ```bash

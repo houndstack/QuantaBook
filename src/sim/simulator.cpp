@@ -2,6 +2,7 @@
 
 #include <filesystem>
 #include <fstream>
+#include <algorithm>
 #include <stdexcept>
 #include <type_traits>
 #include <utility>
@@ -37,10 +38,22 @@ void Simulator::run() {
         schedule_event(config_.start_time, AgentWakeupEvent{kBackgroundAgentId});
     }
 
-    for (const auto& [agent_id, agent] : agents_) {
+    std::vector<AgentId> ordered_agent_ids;
+    ordered_agent_ids.reserve(agents_.size());
+    for (const auto& [agent_id, _] : agents_) {
+        ordered_agent_ids.push_back(agent_id);
+    }
+    std::sort(ordered_agent_ids.begin(), ordered_agent_ids.end());
+
+    for (const AgentId agent_id : ordered_agent_ids) {
+        const auto it = agents_.find(agent_id);
+        if (it == agents_.end()) {
+            continue;
+        }
+        const auto& agent = it->second;
         std::vector<AgentAction> actions;
         actions.reserve(4);
-        agent->on_sim_start(make_observation(config_.start_time), actions);
+        agent->on_sim_start(make_observation(config_.start_time, agent_id), actions);
         dispatch_agent_actions(agent_id, config_.start_time, actions);
         schedule_event(config_.start_time + agent->wakeup_interval(), AgentWakeupEvent{agent_id});
     }
@@ -113,7 +126,7 @@ void Simulator::process_event(const ScheduledEvent& event) {
                 }
                 std::vector<AgentAction> actions;
                 actions.reserve(4);
-                it->second->on_wakeup(make_observation(event.time), actions);
+                it->second->on_wakeup(make_observation(event.time, payload.agent_id), actions);
                 dispatch_agent_actions(payload.agent_id, event.time, actions);
                 schedule_event(event.time + it->second->wakeup_interval(), AgentWakeupEvent{payload.agent_id});
                 event_log_.push_back(EventLogRow{
@@ -176,13 +189,20 @@ void Simulator::dispatch_agent_actions(const AgentId agent_id, const SimTime tim
     }
 }
 
-MarketObservation Simulator::make_observation(const SimTime time) const {
+MarketObservation Simulator::make_observation(const SimTime time, const std::optional<AgentId> observer_agent_id) const {
     MarketObservation obs{};
     obs.time = time;
     obs.best_bid = engine_.best_bid();
     obs.best_ask = engine_.best_ask();
     obs.midpoint = current_midpoint();
     obs.last_trade_price = last_trade_price_;
+    if (observer_agent_id.has_value()) {
+        const auto acct_it = accounts_.find(*observer_agent_id);
+        if (acct_it != accounts_.end()) {
+            obs.own_cash = acct_it->second.cash;
+            obs.own_inventory = acct_it->second.inventory;
+        }
+    }
     if (config_.expose_reference_value_to_agents) {
         obs.visible_reference_value = fair_value_;
     }

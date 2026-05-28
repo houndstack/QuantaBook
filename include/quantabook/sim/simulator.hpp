@@ -51,7 +51,7 @@ class Simulator {
     void process_event(const ScheduledEvent& event);
     void process_background_step(SimTime time);
     void dispatch_agent_actions(AgentId agent_id, SimTime time, const std::vector<AgentAction>& actions);
-    MarketObservation make_observation(SimTime time) const;
+    MarketObservation make_observation(SimTime time, std::optional<AgentId> observer_agent_id = std::nullopt) const;
     std::optional<PriceTicks> current_midpoint() const;
     std::optional<PriceTicks> current_mark_price() const;
     void apply_trades_to_accounts(SimTime time, const std::vector<Trade>& trades);

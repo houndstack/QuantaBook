@@ -20,6 +20,20 @@ struct BaselineMmConfig {
     Quantity quote_quantity{1};
 };
 
+struct RandomTakerConfig {
+    SimTime wakeup_interval{1};
+    Quantity order_quantity{1};
+    std::uint64_t seed_offset{1001};
+};
+
+struct InventoryAwareMmConfig {
+    SimTime wakeup_interval{1};
+    PriceTicks base_quote_offset_ticks{2};
+    PriceTicks inventory_skew_per_unit_ticks{1};
+    Quantity quote_quantity{1};
+    std::int64_t max_inventory_abs{10};
+};
+
 struct SimulationConfig {
     std::uint64_t seed{42};
     SimTime start_time{0};
@@ -30,4 +44,3 @@ struct SimulationConfig {
 };
 
 } // namespace quantabook::sim
-

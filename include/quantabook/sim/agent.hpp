@@ -19,6 +19,8 @@ struct MarketObservation {
     std::optional<PriceTicks> midpoint{};
     std::optional<PriceTicks> visible_reference_value{};
     std::optional<PriceTicks> last_trade_price{};
+    std::int64_t own_cash{};
+    std::int64_t own_inventory{};
 };
 
 struct SubmitLimitAction {
@@ -51,4 +53,3 @@ class IAgent {
 };
 
 } // namespace quantabook::sim
-
