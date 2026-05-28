@@ -8,6 +8,8 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 add_library(quantabook
     src/order_book.cpp
     src/matching_engine.cpp
+    src/sim/simulator.cpp
+    src/sim/baseline_mm.cpp
 )
 
 target_include_directories(quantabook PUBLIC include)
@@ -34,3 +36,7 @@ add_test(NAME order_book_tests COMMAND order_book_tests)
 add_executable(matching_engine_tests tests/matching_engine_tests.cpp)
 target_link_libraries(matching_engine_tests PRIVATE quantabook Catch2::Catch2WithMain)
 add_test(NAME matching_engine_tests COMMAND matching_engine_tests)
+
+add_executable(simulator_tests tests/simulator_tests.cpp)
+target_link_libraries(simulator_tests PRIVATE quantabook Catch2::Catch2WithMain)
+add_test(NAME simulator_tests COMMAND simulator_tests)
