@@ -39,6 +39,7 @@ class Simulator {
 
     const std::vector<EventLogRow>& event_log() const;
     const std::vector<FillRecord>& fill_log() const;
+    std::vector<AgentSummary> summaries() const;
     const std::unordered_map<AgentId, AgentAccount>& accounts() const;
     const MatchingEngine& engine() const;
 
@@ -61,6 +62,7 @@ class Simulator {
     void write_event_log_csv(const std::string& path) const;
     void write_fill_log_csv(const std::string& path) const;
     void write_pnl_csv(const std::string& path) const;
+    void write_summary_csv(const std::string& path) const;
 
     SimulationConfig config_;
     MatchingEngine engine_{};

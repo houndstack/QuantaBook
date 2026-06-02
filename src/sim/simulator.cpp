@@ -11,6 +11,18 @@ namespace quantabook::sim {
 
 namespace {
 constexpr AgentId kBackgroundAgentId = 0;
+
+std::string reject_reason_to_string(const RejectReason reason) {
+    switch (reason) {
+    case RejectReason::None:
+        return "accepted";
+    case RejectReason::ZeroQuantity:
+        return "rejected_zero_quantity";
+    case RejectReason::DuplicateOrderId:
+        return "rejected_duplicate_order_id";
+    }
+    return "rejected_unknown";
+}
 }
 
 bool Simulator::EventCompare::operator()(const ScheduledEvent& lhs, const ScheduledEvent& rhs) const {
@@ -86,7 +98,7 @@ void Simulator::process_event(const ScheduledEvent& event) {
                 event_log_.push_back(EventLogRow{
                     event.time, event.sequence, "AddLimitOrderEvent", payload.agent_id, payload.order_id,
                     payload.side == Side::Buy ? "Buy" : "Sell", payload.price, payload.quantity,
-                    result.accepted ? "accepted" : "rejected",
+                    result.accepted ? "accepted" : reject_reason_to_string(result.reject_reason),
                 });
                 apply_trades_to_accounts(event.time, result.trades);
             } else if constexpr (std::is_same_v<T, MarketOrderEvent>) {
@@ -96,7 +108,8 @@ void Simulator::process_event(const ScheduledEvent& event) {
                 }
                 event_log_.push_back(EventLogRow{
                     event.time, event.sequence, "MarketOrderEvent", payload.agent_id, payload.order_id,
-                    payload.side == Side::Buy ? "Buy" : "Sell", 0, payload.quantity, result.accepted ? "accepted" : "rejected",
+                    payload.side == Side::Buy ? "Buy" : "Sell", 0, payload.quantity,
+                    result.accepted ? "accepted" : reject_reason_to_string(result.reject_reason),
                 });
                 apply_trades_to_accounts(event.time, result.trades);
             } else if constexpr (std::is_same_v<T, CancelOrderEvent>) {
@@ -217,12 +230,24 @@ std::optional<PriceTicks> Simulator::current_midpoint() const {
 }
 
 std::optional<PriceTicks> Simulator::current_mark_price() const {
-    if (last_trade_price_.has_value()) {
-        return last_trade_price_;
+    switch (config_.mark_price_policy) {
+    case MarkPricePolicy::LastTradeThenMidpointThenFairValue:
+        if (last_trade_price_.has_value()) {
+            return last_trade_price_;
+        }
+        if (auto mid = current_midpoint(); mid.has_value()) {
+            return mid;
+        }
+        return fair_value_;
+    case MarkPricePolicy::MidpointThenFairValue:
+        if (auto mid = current_midpoint(); mid.has_value()) {
+            return mid;
+        }
+        return fair_value_;
+    case MarkPricePolicy::FairValueOnly:
+        return fair_value_;
     }
-    if (auto mid = current_midpoint(); mid.has_value()) {
-        return mid;
-    }
+
     return fair_value_;
 }
 
@@ -279,6 +304,7 @@ void Simulator::export_csv(const std::string& output_dir) const {
     write_event_log_csv(output_dir + "/simulation_event_log.csv");
     write_fill_log_csv(output_dir + "/fills.csv");
     write_pnl_csv(output_dir + "/agent_pnl_timeseries.csv");
+    write_summary_csv(output_dir + "/summary.csv");
 }
 
 void Simulator::write_event_log_csv(const std::string& path) const {
@@ -310,8 +336,48 @@ void Simulator::write_pnl_csv(const std::string& path) const {
     }
 }
 
+void Simulator::write_summary_csv(const std::string& path) const {
+    std::ofstream out(path);
+    out << "agent_id,cash,inventory,mark_price,mtm_pnl,total_fills,buy_fills,sell_fills\n";
+    for (const auto& row : summaries()) {
+        out << row.agent_id << "," << row.cash << "," << row.inventory << "," << row.mark_price << "," << row.mtm_pnl << ","
+            << row.total_fills << "," << row.buy_fills << "," << row.sell_fills << "\n";
+    }
+}
+
 const std::vector<EventLogRow>& Simulator::event_log() const { return event_log_; }
 const std::vector<FillRecord>& Simulator::fill_log() const { return fill_log_; }
+std::vector<AgentSummary> Simulator::summaries() const {
+    std::vector<AgentSummary> rows;
+    rows.reserve(accounts_.size());
+    for (const auto& [agent_id, acct] : accounts_) {
+        std::size_t buy_fills = 0;
+        std::size_t sell_fills = 0;
+        for (const auto& fill : acct.fills) {
+            if (fill.side == Side::Buy) {
+                ++buy_fills;
+            } else {
+                ++sell_fills;
+            }
+        }
+
+        const std::int64_t mtm = acct.cash + acct.inventory * static_cast<std::int64_t>(acct.mark_price);
+        rows.push_back(AgentSummary{
+            agent_id,
+            acct.cash,
+            acct.inventory,
+            acct.mark_price,
+            mtm,
+            acct.fills.size(),
+            buy_fills,
+            sell_fills,
+        });
+    }
+    std::sort(rows.begin(), rows.end(), [](const AgentSummary& lhs, const AgentSummary& rhs) {
+        return lhs.agent_id < rhs.agent_id;
+    });
+    return rows;
+}
 const std::unordered_map<AgentId, AgentAccount>& Simulator::accounts() const { return accounts_; }
 const MatchingEngine& Simulator::engine() const { return engine_; }
 

@@ -76,7 +76,13 @@ SubmitResult OrderBook::submit_limit_order(const OrderId order_id,
                                            const SequenceNumber sequence,
                                            SequenceNumber& next_trade_sequence) {
     SubmitResult result{};
-    if (quantity == 0 || seen_order_ids_.contains(order_id) || order_id_exists(order_id)) {
+    if (quantity == 0) {
+        result.reject_reason = RejectReason::ZeroQuantity;
+        result.unfilled_quantity = quantity;
+        return result;
+    }
+    if (seen_order_ids_.contains(order_id) || order_id_exists(order_id)) {
+        result.reject_reason = RejectReason::DuplicateOrderId;
         result.unfilled_quantity = quantity;
         return result;
     }
@@ -110,7 +116,13 @@ SubmitResult OrderBook::submit_market_order(const OrderId order_id,
                                             const SequenceNumber sequence,
                                             SequenceNumber& next_trade_sequence) {
     SubmitResult result{};
-    if (quantity == 0 || seen_order_ids_.contains(order_id) || order_id_exists(order_id)) {
+    if (quantity == 0) {
+        result.reject_reason = RejectReason::ZeroQuantity;
+        result.unfilled_quantity = quantity;
+        return result;
+    }
+    if (seen_order_ids_.contains(order_id) || order_id_exists(order_id)) {
+        result.reject_reason = RejectReason::DuplicateOrderId;
         result.unfilled_quantity = quantity;
         return result;
     }

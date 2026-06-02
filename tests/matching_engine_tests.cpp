@@ -124,6 +124,7 @@ TEST_CASE("zero quantity market orders are rejected") {
     MatchingEngine engine;
     auto r = engine.submit_market_order(1, Side::Buy, 0);
     REQUIRE_FALSE(r.accepted);
+    REQUIRE(r.reject_reason == RejectReason::ZeroQuantity);
     REQUIRE(r.filled_quantity == 0);
 }
 
@@ -134,6 +135,7 @@ TEST_CASE("reusing an order id after cancellation is rejected") {
 
     auto reused = engine.submit_limit_order(100, Side::Buy, 9999, 3);
     REQUIRE_FALSE(reused.accepted);
+    REQUIRE(reused.reject_reason == RejectReason::DuplicateOrderId);
     REQUIRE(reused.unfilled_quantity == 3);
     REQUIRE_FALSE(engine.best_bid().has_value());
 }
@@ -147,6 +149,7 @@ TEST_CASE("reusing an order id after full fill is rejected") {
 
     auto reused = engine.submit_market_order(1, Side::Sell, 1);
     REQUIRE_FALSE(reused.accepted);
+    REQUIRE(reused.reject_reason == RejectReason::DuplicateOrderId);
     REQUIRE(reused.unfilled_quantity == 1);
 }
 

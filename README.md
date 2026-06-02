@@ -57,6 +57,7 @@ This writes:
 - `output/sim_demo_seed_12345/simulation_event_log.csv`
 - `output/sim_demo_seed_12345/fills.csv`
 - `output/sim_demo_seed_12345/agent_pnl_timeseries.csv`
+- `output/sim_demo_seed_12345/summary.csv`
 
 ## Benchmark Scaffold
 ```bash

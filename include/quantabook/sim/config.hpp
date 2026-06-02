@@ -4,6 +4,12 @@
 
 namespace quantabook::sim {
 
+enum class MarkPricePolicy {
+    LastTradeThenMidpointThenFairValue,
+    MidpointThenFairValue,
+    FairValueOnly,
+};
+
 struct BackgroundFlowConfig {
     bool enabled{true};
     SimTime interval{1};
@@ -40,6 +46,7 @@ struct SimulationConfig {
     SimTime end_time{100};
     PriceTicks initial_fair_value{10000};
     bool expose_reference_value_to_agents{false};
+    MarkPricePolicy mark_price_policy{MarkPricePolicy::LastTradeThenMidpointThenFairValue};
     BackgroundFlowConfig background{};
 };
 

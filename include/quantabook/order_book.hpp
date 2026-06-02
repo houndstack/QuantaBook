@@ -12,8 +12,15 @@
 
 namespace quantabook {
 
+enum class RejectReason {
+    None,
+    ZeroQuantity,
+    DuplicateOrderId,
+};
+
 struct SubmitResult {
     bool accepted{false};
+    RejectReason reject_reason{RejectReason::None};
     Quantity filled_quantity{0};
     Quantity unfilled_quantity{0};
     std::vector<Trade> trades{};

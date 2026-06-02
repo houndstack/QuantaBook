@@ -179,6 +179,58 @@ TEST_CASE("simple mark to market pnl arithmetic is correct") {
     REQUIRE(seller_last.mtm_pnl == 0);
 }
 
+TEST_CASE("fair value mark price policy ignores last trade for pnl") {
+    SimulationConfig cfg{};
+    cfg.background.enabled = false;
+    cfg.start_time = 0;
+    cfg.end_time = 3;
+    cfg.initial_fair_value = 105;
+    cfg.mark_price_policy = MarkPricePolicy::FairValueOnly;
+
+    Simulator sim(cfg);
+    sim.add_agent(std::make_unique<ScriptedAgent>(
+        1, 10, std::vector<AgentAction>{SubmitLimitAction{1, Side::Buy, 100, 1}}, std::vector<AgentAction>{}));
+    sim.add_agent(std::make_unique<ScriptedAgent>(
+        2, 1, std::vector<AgentAction>{}, std::vector<AgentAction>{SubmitMarketAction{1, Side::Sell, 1}}));
+    sim.run();
+
+    const auto& buyer_last = sim.accounts().at(1).pnl_series.back();
+    const auto& seller_last = sim.accounts().at(2).pnl_series.back();
+    REQUIRE(buyer_last.mark_price == 105);
+    REQUIRE(buyer_last.mtm_pnl == 5);
+    REQUIRE(seller_last.mark_price == 105);
+    REQUIRE(seller_last.mtm_pnl == -5);
+}
+
+TEST_CASE("agent summary reports final accounting and fill counts") {
+    SimulationConfig cfg{};
+    cfg.background.enabled = false;
+    cfg.start_time = 0;
+    cfg.end_time = 3;
+
+    Simulator sim(cfg);
+    sim.add_agent(std::make_unique<ScriptedAgent>(
+        1, 10, std::vector<AgentAction>{SubmitLimitAction{1, Side::Buy, 100, 1}}, std::vector<AgentAction>{}));
+    sim.add_agent(std::make_unique<ScriptedAgent>(
+        2, 1, std::vector<AgentAction>{}, std::vector<AgentAction>{SubmitMarketAction{1, Side::Sell, 1}}));
+    sim.run();
+
+    const auto summaries = sim.summaries();
+    REQUIRE(summaries.size() == 2);
+    REQUIRE(summaries[0].agent_id == 1);
+    REQUIRE(summaries[0].cash == -100);
+    REQUIRE(summaries[0].inventory == 1);
+    REQUIRE(summaries[0].total_fills == 1);
+    REQUIRE(summaries[0].buy_fills == 1);
+    REQUIRE(summaries[0].sell_fills == 0);
+    REQUIRE(summaries[1].agent_id == 2);
+    REQUIRE(summaries[1].cash == 100);
+    REQUIRE(summaries[1].inventory == -1);
+    REQUIRE(summaries[1].total_fills == 1);
+    REQUIRE(summaries[1].buy_fills == 0);
+    REQUIRE(summaries[1].sell_fills == 1);
+}
+
 TEST_CASE("random taker is deterministic under fixed seed") {
     SimulationConfig cfg{};
     cfg.seed = 555;

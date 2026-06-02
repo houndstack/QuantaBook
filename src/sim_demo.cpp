@@ -14,6 +14,7 @@ int main() {
     config.end_time = 50;
     config.initial_fair_value = 10000;
     config.expose_reference_value_to_agents = true;
+    config.mark_price_policy = MarkPricePolicy::LastTradeThenMidpointThenFairValue;
     config.background.enabled = true;
     config.background.interval = 1;
 
@@ -33,6 +34,7 @@ int main() {
     std::cout << "Simulation complete.\n";
     std::cout << "Event log rows: " << simulator.event_log().size() << "\n";
     std::cout << "Fill log rows: " << simulator.fill_log().size() << "\n";
+    std::cout << "Summary rows: " << simulator.summaries().size() << "\n";
     std::cout << "CSV output directory: " << out_dir << "\n";
 
     return 0;

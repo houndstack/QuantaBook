@@ -4,6 +4,7 @@
 #include "quantabook/sim/types.hpp"
 #include "quantabook/trade.hpp"
 
+#include <cstddef>
 #include <vector>
 
 namespace quantabook::sim {
@@ -25,6 +26,17 @@ struct PnlSnapshot {
     std::int64_t inventory{};
     PriceTicks mark_price{};
     std::int64_t mtm_pnl{};
+};
+
+struct AgentSummary {
+    AgentId agent_id{};
+    std::int64_t cash{};
+    std::int64_t inventory{};
+    PriceTicks mark_price{};
+    std::int64_t mtm_pnl{};
+    std::size_t total_fills{};
+    std::size_t buy_fills{};
+    std::size_t sell_fills{};
 };
 
 struct AgentAccount {
